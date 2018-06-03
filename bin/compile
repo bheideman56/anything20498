@@ -2,6 +2,7 @@
 
 BUILD_DIR="$1"
 CACHE_DIR="$2"
+ENV_DIR="$3"
 
 BP_DIR="$(dirname "$(dirname "$0")")"
 
@@ -11,14 +12,32 @@ mkdir -p "$BUILD_DIR/bin"
 
 cp "$BP_DIR/scripts/schema-update" "$CACHE_DIR"
 
-echo "Listing directory contents for $BP_DIR..."
-ls -al "$BP_DIR"
+echo "-----> Listing contents of $ENV_DIR"
+ls -al "$ENV_DIR"
 
 indent() {
 	sed -u 's/^/       /'
 }
 
+export_env_dir() {
+  env_dir="$1"
+  whitelist_regex=${2:-''}
+  blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)$'}
+  if [ -d "$env_dir" ]; then
+    for e in $(ls "$env_dir"); do
+      echo "$e" | grep -E "$whitelist_regex" | grep -qvE "$blacklist_regex" &&
+      export "$e=$(cat "$env_dir"/"$e")"
+      :
+    done
+  fi
+}
+
 echo "-----> Found messenger.json"
+
+echo "Exporting configuration variables to environment" | indent
+export_env_dir "$ENV_DIR"
+
+echo "$HEROKU_APP_NAME"
 
 if [ ! -s "$BUILD_DIR/messenger.json" ]; then
 	echo "messenger.json is empty"
