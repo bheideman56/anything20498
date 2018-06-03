@@ -1,7 +1,7 @@
 #!/bin/sh
 
-if [ -f "$1/bot.json" ]; then
-	echo "BotFramework"
+if [ -f "$1/messenger.json" ]; then
+	echo "MessengerBotFramework"
 	exit 0
 else
 	exit 1
