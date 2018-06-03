@@ -37,8 +37,6 @@ echo "-----> Found messenger.json"
 echo "Exporting configuration variables to environment" | indent
 export_env_dir "$ENV_DIR"
 
-echo "$HEROKU_APP_NAME"
-
 if [ ! -s "$BUILD_DIR/messenger.json" ]; then
 	echo "messenger.json is empty"
 	exit 1
@@ -49,9 +47,9 @@ fi | indent
 
 ansible-galaxy install --roles-path="$BUILD_DIR" mako-ai.facebook-messenger | indent
 
-printf 'localhost\n' | tee "$BUILD_DIR/inventory"
+printf 'localhost\n' | tee "$BUILD_DIR/inventory" > /dev/null
 
-tee "$BUILD_DIR/site.yml" << EOF
+tee "$BUILD_DIR/site.yml" > /dev/null << EOF
 ---
 
 - connection: local
