@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 
 import json
-import os
+import logging
 import sys
+
+from os.path import expandvars
 
 
 with open(sys.argv[1]) as f:
     schema = json.load(f)
 
-schema['graph_subscription_callback_url'] = os.path.expandvars(schema['graph_subscription_callback_url'])
+logging.info('')
+schema['graph_subscription_callback_url'] = expandvars(schema['graph_subscription_callback_url'])
 
 with open(sys.argv[1], 'w') as f:
     f.write(json.dumps(schema, indent=2, sort_keys=True))

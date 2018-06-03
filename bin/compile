@@ -9,6 +9,11 @@ BP_DIR="$(dirname "$(dirname "$0")")"
 
 mkdir -p "$BUILD_DIR/bin"
 
+cp "$BP_DIR/scripts/schema-update" "$CACHE_DIR"
+
+echo "Listing directory contents for $BP_DIR..."
+ls -al "$BP_DIR"
+
 indent() {
 	sed -u 's/^/       /'
 }
@@ -19,7 +24,8 @@ if [ ! -s "$BUILD_DIR/messenger.json" ]; then
 	echo "messenger.json is empty"
 	exit 1
 else
-	"$BP_DIR/scripts/update-schema $BUILD_DIR/messenger.json"
+	echo "Modifying messenger.json"
+	"$CACHE_DIR"/schema-update "$BUILD_DIR"/messenger.json
 fi | indent
 
 ansible-galaxy install --roles-path="$BUILD_DIR" mako-ai.facebook-messenger | indent
