@@ -1,0 +1,78 @@
+#!/bin/sh
+
+BUILD_DIR="$1"
+CACHE_DIR="$2"
+
+[ ! -d "$CACHE_DIR" ] && mkdir -p "$CACHE_DIR"
+
+mkdir -p "$BUILD_DIR/bin"
+
+indent() {
+	sed -u 's/^/       /'
+}
+
+echo "-----> Found messenger.json"
+
+if [ ! -s "$BUILD_DIR/messenger.json" ]; then
+	echo "messenger.json is empty"
+	exit 1
+fi | indent
+
+ansible-galaxy install --roles-path="$BUILD_DIR" mako-ai.facebook-messenger | indent
+
+printf 'localhost\n' | tee "$BUILD_DIR/inventory"
+
+tee "$BUILD_DIR/site.yml" << EOF
+---
+
+- connection: local
+  gather_facts: yes
+  hosts: all
+  tasks:
+    - import_role:
+        name: mako-ai.facebook-messenger
+
+    # https://devcenter.heroku.com/articles/platform-api-reference#config-vars-update
+    - name: Write the application access token and application verify token to Heroku configuration variables
+      uri:
+        body: |
+          {
+            "ACCESS_TOKEN": "{{ user.access_token }}",
+            "FACEBOOK_USER_ID": "{{ user.id }}"
+          }
+        body_format: json
+        headers:
+          Accept: application/vnd.heroku+json; version=3
+          Authorization: Bearer {{ ansible_env.HEROKU_API_KEY }}
+          Content-Type: application/json
+        method: PATCH
+        return_content: yes
+        url: https://api.heroku.com/apps/{{ ansible_env.HEROKU_APP_NAME }}/config-vars
+EOF
+
+postdeploy="$BUILD_DIR/bin/postdeploy.sh"
+
+cat > "$postdeploy" << EOF
+unset PYTHONHOME
+unset PYTHONPATH
+
+ansible-playbook \
+--extra-vars "@/app/messenger.json" \
+--inventory /app/inventory \
+/app/site.yml
+EOF
+
+chmod +x "$postdeploy"
+
+prpredestroy="$BUILD_DIR/bin/pr-predestroy.sh"
+
+cat > "$prpredestroy" << EOF
+unset PYTHONHOME
+unset PYTHONPATH
+
+ansible-playbook \
+--extra-vars '{"user": {"id": "$FACEBOOK_USER_ID"}}' \
+--inventory /app/inventory \
+--tags destroy \
+/app/site.yml
+EOF
