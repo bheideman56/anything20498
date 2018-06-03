@@ -7,11 +7,17 @@ import sys
 from os.path import expandvars
 
 
-with open(sys.argv[1]) as f:
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+filename = sys.argv[1]
+
+with open(filename) as f:
     schema = json.load(f)
 
-logging.info('')
+logger.info('Expanding environment variables found in {!s}'.format(filename))
 schema['graph_subscription_callback_url'] = expandvars(schema['graph_subscription_callback_url'])
 
-with open(sys.argv[1], 'w') as f:
+with open(filename, 'w') as f:
     f.write(json.dumps(schema, indent=2, sort_keys=True))
