@@ -12,43 +12,41 @@ mkdir -p "$BUILD_DIR/bin"
 
 cp "$BP_DIR/scripts/schema-update" "$CACHE_DIR"
 
-echo "-----> Listing contents of $ENV_DIR"
-ls -al "$ENV_DIR"
-
 indent() {
 	sed -u 's/^/       /'
 }
 
 export_env_dir() {
-  env_dir="$1"
-  whitelist_regex=${2:-''}
-  blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)$'}
-  if [ -d "$env_dir" ]; then
-    for e in $(ls "$env_dir"); do
-      echo "$e" | grep -E "$whitelist_regex" | grep -qvE "$blacklist_regex" &&
-      export "$e=$(cat "$env_dir"/"$e")"
-      :
-    done
-  fi
+	env_dir="$1"
+	whitelist_regex=${2:-''}
+	blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)$'}
+	if [ -d "$env_dir" ]; then
+		for e in $(ls "$env_dir"); do
+			echo "$e" | grep -E "$whitelist_regex" | grep -qvE "$blacklist_regex" &&
+			export "$e=$(cat "$env_dir"/"$e")"
+			:
+		done
+	fi
 }
 
-echo "-----> Found messenger.json"
-
-echo "Exporting configuration variables to environment" | indent
+echo "-----> Exporting configuration variables to environment"
 export_env_dir "$ENV_DIR"
 
 if [ ! -s "$BUILD_DIR/messenger.json" ]; then
 	echo "messenger.json is empty"
 	exit 1
 else
-	echo "Modifying messenger.json"
+	echo "-----> Modifying messenger.json"
 	"$CACHE_DIR"/schema-update "$BUILD_DIR"/messenger.json
-fi | indent
+fi
 
-ansible-galaxy install --roles-path="$BUILD_DIR" mako-ai.facebook-messenger | indent
+echo "-----> Installing Ansible Galaxy role"
+ansible-galaxy install --roles-path="$BUILD_DIR" mako-ai.facebook-messenger > /dev/null
 
+echo "-----> Creating Ansible inventory file"
 printf 'localhost\n' | tee "$BUILD_DIR/inventory" > /dev/null
 
+echo "-----> Creating Ansible playbook"
 tee "$BUILD_DIR/site.yml" > /dev/null << EOF
 ---
 
@@ -80,13 +78,15 @@ EOF
 postdeploy="$BUILD_DIR/bin/postdeploy.sh"
 
 cat > "$postdeploy" << EOF
+#!/usr/bin/env bash
+
 unset PYTHONHOME
 unset PYTHONPATH
 
 ansible-playbook \
---extra-vars "@/app/messenger.json" \
---inventory /app/inventory \
-/app/site.yml
+	--extra-vars "@$HOME/messenger.json" \
+	--inventory "$HOME"/inventory \
+	"$HOME"/site.yml
 EOF
 
 chmod +x "$postdeploy"
@@ -94,14 +94,16 @@ chmod +x "$postdeploy"
 prpredestroy="$BUILD_DIR/bin/pr-predestroy.sh"
 
 cat > "$prpredestroy" << EOF
+#!/usr/bin/env bash
+
 unset PYTHONHOME
 unset PYTHONPATH
 
 ansible-playbook \
---extra-vars '{"user": {"id": "$FACEBOOK_USER_ID"}}' \
---inventory /app/inventory \
---tags destroy \
-/app/site.yml
+	--extra-vars "{'user': {'id': '\$FACEBOOK_USER_ID'}}" \
+	--inventory "$HOME"/inventory \
+	--tags destroy \
+	"$HOME"/site.yml
 EOF
 
 chmod +x "$prpredestroy"
