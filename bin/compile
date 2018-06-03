@@ -76,3 +76,5 @@ ansible-playbook \
 --tags destroy \
 /app/site.yml
 EOF
+
+chmod +x "$prpredestroy"
