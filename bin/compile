@@ -54,6 +54,9 @@ tee "$BUILD_DIR/site.yml" > /dev/null << EOF
   gather_facts: yes
   hosts: all
   tasks:
+    - debug:
+        msg: "Using callback URL: {{ graph_subscription_callback_url }}"
+
     - import_role:
         name: mako-ai.facebook-messenger
 
