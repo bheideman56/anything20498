@@ -3,6 +3,8 @@
 BUILD_DIR="$1"
 CACHE_DIR="$2"
 
+BP_DIR="$(dirname "$(dirname "$0")")"
+
 [ ! -d "$CACHE_DIR" ] && mkdir -p "$CACHE_DIR"
 
 mkdir -p "$BUILD_DIR/bin"
@@ -16,6 +18,8 @@ echo "-----> Found messenger.json"
 if [ ! -s "$BUILD_DIR/messenger.json" ]; then
 	echo "messenger.json is empty"
 	exit 1
+else
+	"$BP_DIR/scripts/update-schema $BUILD_DIR/messenger.json"
 fi | indent
 
 ansible-galaxy install --roles-path="$BUILD_DIR" mako-ai.facebook-messenger | indent
