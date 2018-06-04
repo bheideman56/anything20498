@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+
+"""Expand any environment variables defined in the messenger.json
+manifest file and overwrite it.
+
+For example, if the messenger.json file is as follows:
+
+    {
+        "graph_subscription_callback_url": "https://${HEROKU_APP_NAME}.herokuapp.com/facebook/receive"
+    }
+
+And the HEROKU_APP_NAME environment variable is set to:
+
+    polar-fortress-39068
+
+Then the new messenger.json file is as follows:
+
+    {
+        "graph_subscription_callback_url": "https://polar-fortress-39068.herokuapp.com/facebook/receive"
+    }
+
+This script is ephemeral and is NOT persisted across Heroku builds.
+"""
+
+import json
+import sys
+
+from os.path import expandvars
+
+filename = sys.argv[1]
+
+with open(filename) as f:
+    schema = json.load(f)
+
+for key, value in schema.items():
+    schema[key] = expandvars(value)
+
+with open(filename, 'w') as f:
+    f.write(json.dumps(schema, indent=2, sort_keys=True))
+    f.write('\n')

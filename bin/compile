@@ -1,112 +1,58 @@
-#!/bin/sh
+#!/bin/bash
+#
+# A Heroku buildpack for creating Facebook test user accounts.
 
-BUILD_DIR="$1"
-CACHE_DIR="$2"
-ENV_DIR="$3"
+BUILD_DIR="${1}"
+CACHE_DIR="${2}"
+ENV_DIR="${3}"
 
-BP_DIR="$(dirname "$(dirname "$0")")"
+readonly MANIFEST='messenger.json'
 
-[ ! -d "$CACHE_DIR" ] && mkdir -p "$CACHE_DIR"
+BP_DIR="$(dirname "$(dirname "${0}")")"
 
-mkdir -p "$BUILD_DIR/bin"
+[ ! -d "${CACHE_DIR}" ] && mkdir -p "${CACHE_DIR}"
 
-cp "$BP_DIR/scripts/schema-update" "$CACHE_DIR"
+[ ! -d "${BUILD_DIR}/bin" ] && mkdir -p "${BUILD_DIR}/bin"
 
-indent() {
-	sed -u 's/^/       /'
-}
+cp "${BP_DIR}/scripts/schema-expand" "${CACHE_DIR}"
 
-export_env_dir() {
-	env_dir="$1"
-	whitelist_regex=${2:-''}
-	blacklist_regex=${3:-'^(PATH|GIT_DIR|CPATH|CPPATH|LD_PRELOAD|LIBRARY_PATH)$'}
-	if [ -d "$env_dir" ]; then
-		for e in $(ls "$env_dir"); do
-			echo "$e" | grep -E "$whitelist_regex" | grep -qvE "$blacklist_regex" &&
-			export "$e=$(cat "$env_dir"/"$e")"
-			:
-		done
-	fi
-}
+source "${BP_DIR}/bin/functions"
 
-echo "-----> Exporting configuration variables to environment"
-export_env_dir "$ENV_DIR"
+export_env_dir "${ENV_DIR}"
 
-if [ ! -s "$BUILD_DIR/messenger.json" ]; then
-	echo "messenger.json is empty"
-	exit 1
+if [ ! -s "${BUILD_DIR}/${MANIFEST}" ]; then
+  echo "${MANIFEST} is empty" | indent
+  exit 1
 else
-	echo "-----> Modifying messenger.json"
-	"$CACHE_DIR"/schema-update "$BUILD_DIR"/messenger.json
+  "${CACHE_DIR}/schema-expand" "${BUILD_DIR}/${MANIFEST}"
 fi
 
-echo "-----> Installing Ansible Galaxy role"
-ansible-galaxy install --roles-path="$BUILD_DIR" mako-ai.facebook-messenger > /dev/null
+header 'Installing dependencies'
 
-echo "-----> Creating Ansible inventory file"
-printf 'localhost\n' | tee "$BUILD_DIR/inventory" > /dev/null
+ansible-galaxy install --roles-path="${BUILD_DIR}" mako-ai.facebook-messenger \
+  > /dev/null
 
-echo "-----> Creating Ansible playbook"
-tee "$BUILD_DIR/site.yml" > /dev/null << EOF
----
+cp "${BP_DIR}/provisioning/inventory" "${BUILD_DIR}"
+cp "${BP_DIR}/provisioning/site.yml" "${BUILD_DIR}"
 
-- connection: local
-  gather_facts: yes
-  hosts: all
-  tasks:
-    - debug:
-        msg: "Using callback URL: {{ graph_subscription_callback_url }}"
+header 'Copying the scripts (postdeploy.sh + pr-predestroy.sh)'
 
-    - import_role:
-        name: mako-ai.facebook-messenger
+cp "${BP_DIR}/scripts/postdeploy.sh" "${BUILD_DIR}/bin"
+chmod +x "${BUILD_DIR}/bin/postdeploy.sh"
 
-    # https://devcenter.heroku.com/articles/platform-api-reference#config-vars-update
-    - name: Write the application access token and application verify token to Heroku configuration variables
-      uri:
-        body: |
-          {
-            "ACCESS_TOKEN": "{{ user.access_token }}",
-            "FACEBOOK_USER_ID": "{{ user.id }}"
-          }
-        body_format: json
-        headers:
-          Accept: application/vnd.heroku+json; version=3
-          Authorization: Bearer {{ ansible_env.HEROKU_API_KEY }}
-          Content-Type: application/json
-        method: PATCH
-        return_content: yes
-        url: https://api.heroku.com/apps/{{ ansible_env.HEROKU_APP_NAME }}/config-vars
+cp "${BP_DIR}/scripts/pr-predestroy.sh" "${BUILD_DIR}/bin"
+chmod +x "${BUILD_DIR}/bin/pr-predestroy.sh"
+
+echo 'Copied the scripts to the app bin directory. To use the scripts, add' \
+  'the following object to your app.json file:' | indent
+
+indent <<EOF;
+  {
+    ...
+    "scripts": {
+      "postdeploy": "bin/postdeploy.sh",
+      "pr-predestroy": "bin/pr-predestroy.sh"
+    }
+    ...
+  }
 EOF
-
-postdeploy="$BUILD_DIR/bin/postdeploy.sh"
-
-cat > "$postdeploy" << EOF
-#!/usr/bin/env bash
-
-unset PYTHONHOME
-unset PYTHONPATH
-
-ansible-playbook \
-	--extra-vars "@$HOME/messenger.json" \
-	--inventory "$HOME"/inventory \
-	"$HOME"/site.yml
-EOF
-
-chmod +x "$postdeploy"
-
-prpredestroy="$BUILD_DIR/bin/pr-predestroy.sh"
-
-cat > "$prpredestroy" << EOF
-#!/usr/bin/env bash
-
-unset PYTHONHOME
-unset PYTHONPATH
-
-ansible-playbook \
-	--extra-vars "{'user': {'id': '\$FACEBOOK_USER_ID'}}" \
-	--inventory "$HOME"/inventory \
-	--tags destroy \
-	"$HOME"/site.yml
-EOF
-
-chmod +x "$prpredestroy"
