@@ -4,7 +4,7 @@
 
 ## How to Use
 
-1. Update your `app.json` to include the following buildpacks (`heroku/python`) & (`heroku-buildpack-messenger-bot`) and scripts:
+1. Update your `app.json` to include the following buildpacks `heroku/python` and `heroku-buildpack-messenger-bot`:
 
 ```json
     {
@@ -18,16 +18,25 @@
             }
         ]
         ...
+    }
+```
+
+2. Update your `app.json` to include the following scripts:
+
+```json
+    {
+        ...
         "scripts": {
             "postdeploy": "bin/postdeploy.sh",
             "pr-predestroy": "bin/pr-predestroy.sh"
         }
+        ...
     }
 ```
 
-2. Create a `messenger.json` file in the root directory of the application with the following settings:
+3. Create a `messenger.json` file in the root directory of the application with the following settings:
 
-```json
+```js
 {
     "graph_page_about": "This page is a test page for testing a chatbot", // The description of the test page
     "graph_page_name": "Test Page For Heroku", // The name of the test page, it is best to avoid symbols
