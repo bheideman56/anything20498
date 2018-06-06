@@ -2,7 +2,9 @@
 
 > Creates a Facebook test user and test page for a messenger chatbot
 
-## How to Use
+The `app.json` file serves as a manifest for describing applications deployed to Heroku. Within the `app.json` file is an optional key-value pair called [`scripts`](https://devcenter.heroku.com/articles/app-json-schema#scripts). Heroku supports both `postdeploy` and `pr-predestroy` scripts that execute at different stages of the build and release process. This buildpack adds custom `postdeploy` and `pr-predestroy` scripts to any Heroku application for creating and destroying Facebook test user accounts for testing purposes. Read more on the motivation [here](https://github.com/hey-mako/ansible-role-facebook-messenger#motivation).
+
+## Usage
 
 1. Update your `app.json` to include the following buildpacks `heroku/python` and `heroku-buildpack-messenger-bot`:
 
@@ -33,6 +35,10 @@
         ...
     }
 ```
+
+Note that `postdeploy` is only run once after the app is created and deployed for the first time. Any subsequent deployments do not invoke the `postdeploy` script; for example, when a pull request branch is updated.
+
+The `pr-predestroy` script applies only to Heroku [Review Apps](https://devcenter.heroku.com/articles/github-integration-review-apps) and is invoked only after closing or merging the associated pull request.
 
 3. Create a `messenger.json` file in the root directory of the application with the following settings:
 
