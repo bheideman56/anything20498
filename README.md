@@ -14,7 +14,7 @@
   ]
 ```
 2. Create a `messenger.json` file within the app root updating the following settings
-```json
+```js
 {
   "graph_page_about": "This page is a test page for testing a chatbot", // The description of the test page
   "graph_page_name": "Test Page For Heroku", // The name of the test page, it's best to avoid symbols
