@@ -1,5 +1,5 @@
 # Heroku Buildpack for Facebook Messenger Bots
-> Creates an associated test user with a test page for the Facebook messenger chatbot
+> Creates an associated test user with a test page for a Facebook messenger chatbot
 
 ## How to Use
 1. Update your `app.json` to include the following buildpacks (`heroku/python`) & (`heroku-buildpack-messenger-bot`)
