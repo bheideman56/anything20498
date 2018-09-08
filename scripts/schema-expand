@@ -23,18 +23,26 @@ This script is ephemeral and is NOT persisted across Heroku builds.
 """
 
 import json
+import logging
 import sys
 
 from os.path import expandvars
 
-filename = sys.argv[1]
 
-with open(filename) as f:
-    schema = json.load(f)
+def expand(filename):
+    with open(filename, 'r+') as f:
+        schema = json.load(f)
+        for key, value in schema.items():
+            schema[key] = expandvars(value)
+        # Overwrite the contents of the file.
+        f.seek(0)
+        json.dump(schema, f, indent=2, sort_keys=True)
 
-for key, value in schema.items():
-    schema[key] = expandvars(value)
 
-with open(filename, 'w') as f:
-    f.write(json.dumps(schema, indent=2, sort_keys=True))
-    f.write('\n')
+if __name__ == '__main__':
+    try:
+        filename = sys.argv[1]
+    except IndexError:
+        logging.error('messenger.json must be specified')
+        sys.exit(1)
+    expand(filename)
