@@ -1,8 +1,9 @@
 #!/bin/bash
 
-if [ -f "${1}/messenger.json" ]; then
-  echo 'Messenger bot'
-  exit 0
-else
+if [ ! -f "$1/messenger.json" ]; then
   exit 1
 fi
+
+echo 'Messenger bot'
+
+exit 0
